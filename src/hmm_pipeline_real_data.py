@@ -33,6 +33,7 @@ import concurrent.futures
 import shutil
 import time
 import functools
+import sys
 
 import numpy as np
 import pandas as pd
@@ -66,6 +67,15 @@ def cronometra(func):
 # Coordenades del cel per a GW231123 (radians)
 ALPHA_GW = 3.37
 DELTA_GW  = 0.45
+
+actual_dir = os.path.basename(os.getcwd()) # comprovem que estem a la root del repo
+if actual_dir == "src":
+    print('You are launching the code from src/. This may create files in src/ and take ' \
+    'much longer to run.')
+    print("Please launch the code from the root, This is: python src/hmm_pipeline_real_data.py")
+    sys.exit(1)
+
+
 
 needed_dirs = [
     "data/raw",
@@ -867,14 +877,15 @@ if __name__ == "__main__":
     SFT_DIR_TEMPLATE = "data/processed/sfts_{massa:.2e}eV"
 
     # ── Pas 1: Descarregar dades (només si no existeixen) ────────────────────
-    fitxers_gwf = glob.glob("*GWOSC*.gwf")
+    fitxers_gwf = glob.glob("data/raw/*GWOSC*.gwf")
     if not fitxers_gwf:
         print("\nPAS 1: Descarregant dades de GWOSC")
         fitxer_H1, fitxer_L1 = get_data()
     else:
         print(f"\nPAS 1: Fitxers GWF ja existents ({fitxers_gwf}), saltant.")
-        fitxer_H1 = [f for f in fitxers_gwf if f.startswith('H')][0]
-        fitxer_L1 = [f for f in fitxers_gwf if f.startswith('L')][0]
+        print(fitxers_gwf)
+        fitxer_H1 = [f for f in fitxers_gwf if os.path.basename(f).startswith('H')][0]
+        fitxer_L1 = [f for f in fitxers_gwf if os.path.basename(f).startswith('L')][0]
 
     # ── Pas 2: Trossejar i crear caches ──────────────────────────────────────
     if not os.path.exists("data/raw/H1_data.lcf"):
@@ -898,13 +909,13 @@ if __name__ == "__main__":
             print(f"\nPAS 3 [{massa_idx:.2e} eV]: SFTs ja existents, saltant.")
 
     # ── Pas 4: Cerca principal (massa de l'index 4) ───────────────────────────
-    print("\nPAS 4: Càlcul de la matriu B i Viterbi per a la massa principal")
     index  = 6
     F0     = df_csv["Freq_inicial"].iloc[index]
     F1     = df_csv["Freqdot_inicial"].iloc[index]
     tau_gw = df_csv["Tau_gw"].iloc[index]
     massa  = df_csv["Massa"].iloc[index]
 
+    print(f"\nPAS 4: Càlcul de la matriu B i Viterbi per a la massa principal | massa:  {massa:.2e} eV")
     sft_pattern_principal = f"{SFT_DIR_TEMPLATE.format(massa=massa)}/*.sft"
     B_real = build_B(sft_pattern_principal, F0, F1, tau_gw, massa=massa)
     visualize_B(B_real, F0, F1, tau_gw, titol="Matriu B — dades reals GW231123")
