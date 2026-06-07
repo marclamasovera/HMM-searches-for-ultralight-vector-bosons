@@ -1,5 +1,5 @@
 """
-pipeline_hmm_boson.py
+hmm_pipeline_real_data.py
 =====================
 Pipeline complet per a la cerca HMM de bosons superradiants
 amb dades reals de GW231123 (O4a LIGO).
@@ -7,11 +7,11 @@ amb dades reals de GW231123 (O4a LIGO).
 Estructura
 ----------
 1. Configuració global
-2. calcula_parametres_hmm()   — paràmetres T_sft / T_coh
+2. calcula_parametres_hmm()   — paràmetres T_sft / T_coh per garantir viterbi
 3. algoritme_viterbi()        — Viterbi amb spin-up
 4. build_B()                  — matriu B amb dades reals
-5. build_simulated_B()        — matriu B amb senyal injectat
-6. get_sqrtSX_from_sfts()     — ASD real del detector
+5. build_simulated_B()        — matriu B amb senyal injectat a partir de SFTs reals
+6. get_sqrtSX_from_sfts()     — ASD real del detector a partir de llistes predefinides
 7. Data helpers
    · get_data()               — descarrega dades de GWOSC
    · trossejar_i_crear_cache()— divideix .gwf en trossos
@@ -19,8 +19,8 @@ Estructura
 8. Visualització
    · visualize_B()
    · compute_n_plot_viterbi()
-9. upper_limit_loop()         — bucle de límits superiors
-10. __main__                  — pipeline complet
+9. upper_limit_loop()         — bucle de límits superiors amb diverses opcions
+10. __main__                  — pipeline complet tot junt
 """
 
 # ── Importacions ──────────────────────────────────────────────────────────────
@@ -66,6 +66,25 @@ def cronometra(func):
 # Coordenades del cel per a GW231123 (radians)
 ALPHA_GW = 3.37
 DELTA_GW  = 0.45
+
+needed_dirs = [
+    "data/raw",
+    "data/processed/fake_data",
+    "results/simulations/B_matrix",
+    "results/simulations/V_matrix",
+    "results/injections"
+]
+
+for dir in needed_dirs:
+    os.makedirs(dir, exist_ok=True)
+
+
+
+CSV_PATH  = "data/resultats_simulacio.csv"
+
+if not os.path.exists(CSV_PATH):
+    print(f"Creant CSV de simulació: {CSV_PATH}")
+    subprocess.run(['python', 'superrad_script.py'], check=True)
 
 # Temps GPS d'inici de les dades reals
 T_START = 1384788400
@@ -842,24 +861,6 @@ def upper_limit_loop(
 
 if __name__ == "__main__":
 
-    needed_dirs = [
-    "data/raw",
-    "data/processed/fake_data",
-    "results/simulations/B_matrix",
-    "results/simulations/V_matrix",
-    "results/injections"
-]
-
-    for dir in needed_dirs:
-        os.makedirs(dir, exist_ok=True)
-
-    
-
-    CSV_PATH  = "data/resultats_simulacio.csv"
-
-    if not os.path.exists(CSV_PATH):
-        print(f"Creant CSV de simulació: {CSV_PATH}")
-        subprocess.run(['python', 'superrad_script.py'], check=True)
     # Template del directori de SFTs — cada massa té el seu propi directori
     # perquè T_sft canvia amb la massa.
     # Ex: massa=1.00e-13 eV  ->  sfts_1.00e-13eV/*.sft
@@ -897,17 +898,17 @@ if __name__ == "__main__":
             print(f"\nPAS 3 [{massa_idx:.2e} eV]: SFTs ja existents, saltant.")
 
     # ── Pas 4: Cerca principal (massa de l'index 4) ───────────────────────────
-    # print("\nPAS 4: Càlcul de la matriu B i Viterbi per a la massa principal")
-    # index  = 4
-    # F0     = df_csv["Freq_inicial"].iloc[index]
-    # F1     = df_csv["Freqdot_inicial"].iloc[index]
-    # tau_gw = df_csv["Tau_gw"].iloc[index]
-    # massa  = df_csv["Massa"].iloc[index]
+    print("\nPAS 4: Càlcul de la matriu B i Viterbi per a la massa principal")
+    index  = 6
+    F0     = df_csv["Freq_inicial"].iloc[index]
+    F1     = df_csv["Freqdot_inicial"].iloc[index]
+    tau_gw = df_csv["Tau_gw"].iloc[index]
+    massa  = df_csv["Massa"].iloc[index]
 
-    # sft_pattern_principal = f"{SFT_DIR_TEMPLATE.format(massa=massa)}/*.sft"
-    # B_real = build_B(sft_pattern_principal, F0, F1, tau_gw, massa=massa)
-    # visualize_B(B_real, F0, F1, tau_gw, titol="Matriu B — dades reals GW231123")
-    # compute_n_plot_viterbi(B_real, F0, F1, tau_gw)
+    sft_pattern_principal = f"{SFT_DIR_TEMPLATE.format(massa=massa)}/*.sft"
+    B_real = build_B(sft_pattern_principal, F0, F1, tau_gw, massa=massa)
+    visualize_B(B_real, F0, F1, tau_gw, titol="Matriu B — dades reals GW231123")
+    compute_n_plot_viterbi(B_real, F0, F1, tau_gw)
 
     # ── Pas 5: Límits superiors sobre totes les masses ────────────────────────
     print("\nPAS 5: Bucle de límits superiors")

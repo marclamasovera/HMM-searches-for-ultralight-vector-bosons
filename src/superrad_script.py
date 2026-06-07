@@ -1,6 +1,5 @@
 from superrad import ultralight_boson as ub
 import numpy as np
-import matplotlib.pyplot as plt
 import pandas as pd
 
 """ Script per generar dades simulades d'una senyal de bosó ultralleuger
