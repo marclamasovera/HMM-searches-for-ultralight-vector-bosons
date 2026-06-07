@@ -228,4 +228,4 @@ dependencies:
       - solar-system-ephemerides==1.2.0
       - superrad==0.3.0
       - tzdata==2026.2
-prefix: /home/marc81/root_trial/envs/gw_fix
+

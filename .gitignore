@@ -3,6 +3,7 @@ data/
 final/
 checkpoints/
 
+
 #ignore any .npy file
 *.npy
 
@@ -11,7 +12,6 @@ checkpoints/
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
-
 # ignore any DS files
 
 .DS_Store
