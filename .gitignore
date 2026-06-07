@@ -1,0 +1,23 @@
+sfts_reals/
+data/
+final/
+checkpoints/
+
+#ignore any .npy file
+*.npy
+
+#ignore any python and jupyter cache files
+
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# ignore any DS files
+
+.DS_Store
+
+#ignore any cache files
+
+*.cache
+
+
