@@ -92,6 +92,8 @@ for dir in needed_dirs:
 
 CSV_PATH  = "data/resultats_simulacio.csv"
 
+# si no tinc la simulacio feta, es fa
+
 if not os.path.exists(CSV_PATH):
     print(f"Creant CSV de simulació: {CSV_PATH}")
     subprocess.run(['python', 'superrad_script.py'], check=True)
@@ -137,7 +139,14 @@ def calcula_parametres_hmm(
     -------
     dict amb claus: T_sft, T_coh, N_SFTs, T_coh_max_fisic,
                     T_coh_max_drift, deltaf, drift_Hz, drift_bin
+
+
+    Note:
+    LVK demana T_coh/T_sft >= 4 i nombre enter. Jo exigeixo que sigui 5 donat que he trobat problemes
+    en algun moment. A més, el drift_bin_max no caldria, pero es per assegurar no trobar combinacions
+    molt justes que causin qualsevol problema numèric que faci que Viterbi no funcioni bé.
     """
+    
     fdot_max = abs(fdot_max)
     if fdot_max <= 0:
         raise ValueError("fdot_max ha de ser positiu.")
