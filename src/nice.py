@@ -819,7 +819,7 @@ def upper_limit_loop(
     ax.plot(masses, confidences, color='gray', lw=1, alpha=0.5)
     ax.axhline(confidence_threshold, color='red', ls='--', lw=1.5,
                label=f'Llindar {confidence_threshold:.0%}')
-    ax.set_xlabel('Boson Mass (MeV)', fontsize=12)
+    ax.set_xlabel('Boson Mass (eV)', fontsize=12)
     ax.set_ylabel('Exlusion Confidence', fontsize=12)
     ax.set_title('HMM Upper Limits — GW231123', fontsize=14)
     ax.legend()
