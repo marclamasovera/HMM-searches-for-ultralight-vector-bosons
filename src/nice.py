@@ -843,7 +843,24 @@ def upper_limit_loop(
 
 if __name__ == "__main__":
 
-    CSV_PATH         = "data/resultats_simulacio.csv"
+    needed_dirs = [
+    "data/raw",
+    "data/processed/fake_data",
+    "results/simulations/B_matrix",
+    "results/simulations/V_matrix",
+    "results/injections"
+]
+
+    for dir in needed_dirs:
+        os.makedirs(dir, exist_ok=True)
+
+    
+
+    CSV_PATH  = "data/resultats_simulacio.csv"
+
+    if not os.path.exists(CSV_PATH):
+        print(f"Creant CSV de simulació: {CSV_PATH}")
+        subprocess.run(['python', 'superrad_script.py'], check=True)
     # Template del directori de SFTs — cada massa té el seu propi directori
     # perquè T_sft canvia amb la massa.
     # Ex: massa=1.00e-13 eV  ->  sfts_1.00e-13eV/*.sft
