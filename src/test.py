@@ -6,9 +6,32 @@ import gc
 import matplotlib
 matplotlib.use('Agg')  # Forcem Matplotlib a treballar sense pantalla
 import logging
+import os
+import subprocess
+
+CSV_PATH = "data/resultats_simulacio.csv"
+
+if not os.path.exists(CSV_PATH):
+    print(f"AVÍS: No s'ha trobat {CSV_PATH}. Generant les dades inicials amb SuperRad...")
+    # Executa automàticament l'script de simulació
+    subprocess.run(["python", "src/superrad_script.py"], check=True)
+    print("✓ Dades generades correctament. Continuant amb el pipeline...")
 
 logger = logging.getLogger('pyfstat')
 logger.setLevel(logging.WARNING)  # O DEBUG per més detall, o WARNING per menys
+
+if __name__ == "__main__":
+
+    needed_dirs = [
+    "data/raw",
+    "data/processed/fake_data",
+    "results/simulations/B_matrix",
+    "results/simulations/V_matrix",
+    "results/injections"
+]
+
+    for dir in needed_dirs:
+        os.makedirs(dir, exist_ok=True)
 
 def calcula_parametres_hmm(
     fdot_max,
@@ -246,7 +269,6 @@ def build_B(sft_path,csv_path):
 
 #######################################################################################################################
 
-if __name__ == "__main__":
     """
     Script per generar dades i fer .sft per trobar la matriu B de l'HMM. 
 
@@ -257,7 +279,7 @@ if __name__ == "__main__":
     ruta_earth = "/home/marc81/root_trial/envs/gw_fix/lib/python3.10/site-packages/solar_system_ephemerides/ephemerides/earth/earth00-40-DE405.dat.gz"
     ruta_sun = "/home/marc81/root_trial/envs/gw_fix/lib/python3.10/site-packages/solar_system_ephemerides/ephemerides/sun/sun00-40-DE405.dat.gz"
 
-    df = pd.read_csv("data/resultats_simulacio.csv")
+    df = pd.read_csv("CSV_PATH")
     alpha_gw = 3.37
     delta_gw = 0.45
 

@@ -748,7 +748,6 @@ def upper_limit_loop(
         print(f"Fent {n_injections} injeccions ({num_segments_real} segments cada una)...")
         injection_scores = []
         recoveries_ok = []  # Llista per guardar els èxits reals
-        recovs=[]
         for seed in range(n_injections):
             B_sim = build_simulated_B_from_real_sfts(sft_pattern, F0, F1, h0, tau_gw,
                                                      seed=seed, sqrtSX=sqrtSX,
