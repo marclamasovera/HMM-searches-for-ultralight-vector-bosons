@@ -434,7 +434,7 @@ def build_simulated_B_from_real_sfts(
 # 6. ESTIMACIÓ DE sqrtSX DES DELS SFTs REALS
 # =============================================================================
 
-def get_sqrtSX_from_sfts(sft_pattern, F0, banda=0.5):
+def get_sqrtSX_from_sfts(F0):
     """
     Retorna l'ASD del detector LIGO a la freqüència F0 interpolant
     la corba de soroll oficial d'O4a (GWOSC / LIGO-T2400074).
@@ -445,9 +445,8 @@ def get_sqrtSX_from_sfts(sft_pattern, F0, banda=0.5):
 
     Paràmetres
     ----------
-    sft_pattern : (ignorat, mantingut per compatibilitat)
     F0          : freqüència d'interès (Hz)
-    banda       : (ignorat, mantingut per compatibilitat)
+
 
     Retorna
     -------
@@ -771,7 +770,7 @@ def upper_limit_loop(
         num_segments_real = B_real.shape[1]
         # Correccio: escala sqrtSX perque les simulacions tinguin
         # la mateixa mediana de 2F que les dades reals
-        sqrtSX    = get_sqrtSX_from_sfts(sft_pattern, F0)
+        sqrtSX    = get_sqrtSX_from_sfts(F0)
     
         _, _, V_real     = algoritme_viterbi(B_real, f_cerca_min, deltaf)
         score_real = np.max(V_real[:, -1]) / num_segments_real
