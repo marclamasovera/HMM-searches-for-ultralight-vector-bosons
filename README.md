@@ -9,7 +9,7 @@ Uses the python package `SuperRad` in order to simulate superradiant ultralight 
 Uses the simulated properties from the previous script and injects the signal into gaussian simulated noise. Then tries to recover the signal using the Viterbi Algorithm
 
 ### hmm_pipeline_real_data.py
-Fetches and downloads 5 hours of real strain data from the L1 and H1 detectors for the GW231123 event, then computes for every boson mass a SFT according to the required algorithm proposed by the LVK collaboration
+Fetches 5 hours of real strain data from the L1 and H1 detectors for the GW231123 event, then computes for every boson mass a SFT according to the required algorithm proposed by the LVK collaboration
 (`calcula_parametres_hmm`).
 
 Then computes 100 injections into the real data for every boson mass (so for every frequency band searched) and sees if the Viterbi Algortihm recovers the signal, based on a Loudest Event criteria.
