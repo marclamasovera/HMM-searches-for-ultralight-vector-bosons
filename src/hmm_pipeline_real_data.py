@@ -192,7 +192,7 @@ def calcula_parametres_hmm(
 
 
 # =============================================================================
-# 3. ALGORISME DE VITERBI AMB SPIN-UP
+# 3. ALGORITME VITERBI AMB SPIN-UP
 # =============================================================================
 
 def algoritme_viterbi(
@@ -234,12 +234,12 @@ def algoritme_viterbi(
             max_score          = -np.inf # (és com posar 0)
             millor_bin_anterior = -1
             for salt in salts_permesos: # recordar q es matriu bidiagonal
-                j = i - salt
+                j = i - salt # o i o i-1 
                 if 0 <= j < num_bins:
                     score = V[j, t - 1] + log_p[salt]
                     if score > max_score:
-                        max_score           = score
-                        millor_bin_anterior = j
+                        max_score           = score # un score per cada salt, agafem el millor
+                        millor_bin_anterior = j # pel backtracing, guardem d'on vinc
             V[i, t] = B_matrix[i, t] + max_score
             P[i, t] = millor_bin_anterior
 
