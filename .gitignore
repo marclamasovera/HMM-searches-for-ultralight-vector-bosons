@@ -24,5 +24,7 @@ __pycache__/
 #ignore any *txt file
 
 *.txt
+*.bib
+*.tex
 
 
