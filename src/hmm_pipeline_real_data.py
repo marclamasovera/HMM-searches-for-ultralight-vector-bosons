@@ -44,11 +44,11 @@ import matplotlib.pyplot as plt
 import pyfstat
 from gwpy.timeseries import TimeSeries
 
-# ── Silenciem logs de pyfstat ─────────────────────────────────────────────────
-logging.getLogger('pyfstat').setLevel(logging.WARNING)
+# Silenciem logs de pyfstat
 logger_temps = logging.getLogger('temps')
 logger_temps.setLevel(logging.INFO)
 
+#he intentat fer una funcio que cronometra, el claude m'ha fet aixo
 def cronometra(func):
      """Decorator que mesura i registra el temps d'execució d'una funció."""
      @functools.wraps(func)
@@ -61,10 +61,10 @@ def cronometra(func):
      return wrapper
 
 
-# =============================================================================
+#################################################################################################################################################
 # 1. CONFIGURACIÓ GLOBAL
-# =============================================================================
 # Coordenades del cel per a GW231123 (radians)
+
 ALPHA_GW = 3.37
 DELTA_GW  = 0.45
 
@@ -101,7 +101,7 @@ if not os.path.exists(CSV_PATH):
 # Temps GPS d'inici de les dades reals
 T_START = 1384788400
 
-# Rutes als efemèrides (ajusta si cal)
+# Rutes als efemèrides (ajusta si cal) caldria canviar-ho
 RUTA_EARTH = (
     "/home/marc81/root_trial/envs/gw_fix/lib/python3.10/"
     "site-packages/solar_system_ephemerides/ephemerides/"
@@ -114,9 +114,8 @@ RUTA_SUN = (
 )
 
 
-# =============================================================================
-# 2. CÀLCUL DE PARÀMETRES HMM
-# =============================================================================
+#################################################################################################################################################
+# 2. CÀLCUL DE PARÀMETRES HMM SEGONS LVK
 
 def calcula_parametres_hmm(
     fdot_max,
@@ -151,31 +150,31 @@ def calcula_parametres_hmm(
     if fdot_max <= 0:
         raise ValueError("fdot_max ha de ser positiu.")
 
-    tcoh_max_fisic = 1.0 / np.sqrt(2.0 * fdot_max)
-    tcoh_max_drift = np.sqrt(drift_bin_max / (2.0 * fdot_max))
+    tcoh_max_fisic = 1.0 / np.sqrt(2.0 * fdot_max) # imposem maxim t_coh
+    tcoh_max_drift = np.sqrt(drift_bin_max / (2.0 * fdot_max)) # imposem ara un encara més restrictiu --> possibles efectes a les vores
 
-    t_sfts_permesos = [16, 32, 64, 128, 256, 512, 1024, 1800]
+    t_sfts_permesos = [16, 32, 64, 128, 256, 512, 1024] # múltiples de 2. No poso 1800 (màxim de LVK) per que divideixo els .gwf en seccions de 15 min (900s)
     candidats_valids = []
 
     for t_sft in t_sfts_permesos:
-        if t_sft > tcoh_max_drift:
+        if t_sft > tcoh_max_drift: # rebutjo
             continue
-        n_candidat = int(tcoh_max_drift // t_sft)
-        if n_candidat < n_min:
+        n_candidat = int(tcoh_max_drift // t_sft) # miro el quocient (ha de ser int)
+        if n_candidat < n_min: #rebutjo
             continue
-        tcoh_candidat = n_candidat * t_sft
-        deltaf        = 1.0 / (2.0 * tcoh_candidat)
-        drift_bin     = (fdot_max * tcoh_candidat) / deltaf
-        if drift_bin <= drift_bin_max:
+        tcoh_candidat = n_candidat * t_sft # un cop tinc tsft --> tcoh
+        deltaf        = 1.0 / (2.0 * tcoh_candidat) # resolució pel tcoh associat a tsft i n_candidat
+        drift_bin     = (fdot_max * tcoh_candidat) / deltaf # quants bins em moc (<1 per def)
+        if drift_bin <= drift_bin_max: # candidat ok
             candidats_valids.append({
                 "tsft": t_sft, "tcoh": tcoh_candidat, "n": n_candidat,
                 "deltaf": deltaf, "drift_bin": drift_bin,
             })
 
-    if not candidats_valids:
+    if not candidats_valids: #liada
         raise ValueError(f"No hi ha combinacions vàlides per fdot_max={fdot_max:.3e}")
 
-    max_tcoh = max(c["tcoh"] for c in candidats_valids)
+    max_tcoh = max(c["tcoh"] for c in candidats_valids) # agafo el maxim sempre possible
     bons     = [c for c in candidats_valids if c["tcoh"] >= tolerancia_tcoh * max_tcoh]
     millor   = max(bons, key=lambda c: c["tsft"])
 
@@ -191,9 +190,8 @@ def calcula_parametres_hmm(
     }
 
 
-# =============================================================================
+#################################################################################################################################################
 # 3. ALGORITME VITERBI AMB SPIN-UP
-# =============================================================================
 
 def algoritme_viterbi(
     B_matrix,
@@ -252,9 +250,8 @@ def algoritme_viterbi(
     return cami_optim_freqs, cami_optim_bins, V
 
 
-# =============================================================================
+#################################################################################################################################################
 # 4. MATRIU B — DADES REALS
-# =============================================================================
 
 def build_B(sft_path, F0, F1, tau_gw, massa=None):
     """
@@ -301,15 +298,17 @@ def build_B(sft_path, F0, F1, tau_gw, massa=None):
             print(f"  Avís: no s'ha pogut llegir el rang dels SFTs ({e}).")
 
     f_cerca_min   = F0 - 0.1
-    f_cerca_max   = F0 + 1.7 + abs(F1) * T_obs
+    f_cerca_max   = F0 + 1.7 + abs(F1) * T_obs # dono marge suficient. He trobat problemes aquí a vegades. Aquest 1.7 fa que haguem de buscar molt mes bins!! anar en compte
     num_freq_bins = int(np.round((f_cerca_max - f_cerca_min) / deltaf)) + 1
 
-    B_matrix = np.zeros((num_freq_bins, num_segments))
+    B_matrix = np.zeros((num_freq_bins, num_segments)) #ini
 
     for t in range(num_segments):
-        t_min = T_START + t * T_coh
-        t_max = t_min + T_coh
+        t_min = T_START + t * T_coh #temps ini
+        t_max = t_min + T_coh # temps final
 
+        # fem una cerca coherent amb freqs entre freq_cerca_min i freq_cerca_max, amb deltaf entre bins. F1 i f2 indiquen derivades de la freq. les poso a 0 perque 
+        # per cada segment tcoh considero una cw COHERENT
         search = pyfstat.GridSearch(
             label=f"segment_{t}",
             outdir="real_data/output_B_matrix",
@@ -324,7 +323,7 @@ def build_B(sft_path, F0, F1, tau_gw, massa=None):
             if search.data is not None:
                 twoF = search.data['twoF']
                 mlen = min(len(twoF), num_freq_bins)
-                B_matrix[:mlen, t] = twoF[:mlen]
+                B_matrix[:mlen, t] = twoF[:mlen] # trec el twoF
                 print(f"  Segment {t}: 2F ∈ [{twoF.min():.3e}, {twoF.max():.3e}]")
             else:
                 print(f"  Segment {t}: cap dada (gap).")
@@ -332,7 +331,7 @@ def build_B(sft_path, F0, F1, tau_gw, massa=None):
             pass
         finally:
             del search
-            gc.collect()
+            gc.collect() # segons claude aixo ajuda a la memoria ram
 
     print(f"Matriu B real calculada: {B_matrix.shape}")
     tag = f"{massa:.2e}eV" if massa is not None else f"{F0:.2f}Hz"
@@ -342,12 +341,8 @@ def build_B(sft_path, F0, F1, tau_gw, massa=None):
 
 
 
-# =============================================================================
-# 5.1 MATRIU B — DADES SIMULADES (INJECCIÓ) NO SÉ SI ESTÀ BÉ
-# =============================================================================
-# =============================================================================
-# 5.2 MATRIU B — DADES SIMULADES A PARTIR D SFTS REALS (INJECCIÓ) NO SÉ SI ESTÀ BÉ
-# =============================================================================
+#################################################################################################################################################
+# 5.2 MATRIU B — DADES SIMULADES A PARTIR D SFTS REALS (INJECCIÓ) NO SÉ SI ESTÀ BÉ --> ESTAVA BÉ
 @cronometra
 def build_simulated_B_from_real_sfts(
     sft_pattern, F0, F1, h0, tau_gw,
@@ -402,7 +397,7 @@ def build_simulated_B_from_real_sfts(
             Alphas=[ALPHA_GW], Deltas=[DELTA_GW],
             tref=t_min, minStartTime=t_min, maxStartTime=t_max,
             
-            # INJECT ON THE FLY IN RAM
+            # INJECT ON THE FLY IN RAM, amb diccionari
             injectSources={
                 "F0": F0_seed,
                 "F1": F1,
@@ -430,9 +425,8 @@ def build_simulated_B_from_real_sfts(
 
     return B_matrix
 
-# =============================================================================
+#################################################################################################################################################
 # 6. ESTIMACIÓ DE sqrtSX DES DELS SFTs REALS
-# =============================================================================
 
 def get_sqrtSX_from_sfts(F0):
     """
@@ -474,9 +468,8 @@ def get_sqrtSX_from_sfts(F0):
     return sqrtSX
 
 
-# =============================================================================
-# 7. DATA HELPERS
-# =============================================================================
+#################################################################################################################################################
+# 7. DATA HELPERS 
 
 def get_data(gps_start=T_START, duration=18000):
     """
@@ -507,7 +500,7 @@ def get_data(gps_start=T_START, duration=18000):
 
     return fitxer_H1, fitxer_L1
 
-
+# aqui tot és Claude generated code. Si no carrego les 5 hores senceres a la ram per cada fitxer sft i trigo moltissim a fer sfts
 def trossejar_i_crear_cache(fitxer_original, canal, chunk_size=900):
     """
     Divideix un fitxer GWF llarg en trossos de chunk_size segons
@@ -536,7 +529,7 @@ def trossejar_i_crear_cache(fitxer_original, canal, chunk_size=900):
     print(f"  Cache creat: {nom_cache}")
     return nom_cache
 
-
+# adaptació de la comanda lalpulsar MakeSfts a python
 def make_sfts(csv_path, index=4, sft_output_dir=None,
               lcf_H1="H1_data.lcf", lcf_L1="L1_data.lcf", n_workers=6):
     """
@@ -572,6 +565,7 @@ def make_sfts(csv_path, index=4, sft_output_dir=None,
     fmin        = f_cerca_min - 8.0
     band        = np.ceil(f_cerca_max + 8.0 - fmin)
 
+    # claude generated -> te a veure amb la separacio de fitxers que he fet abans
     def _llegeix_lcf(lcf_path):
         patches = []
         with open(lcf_path) as f:
@@ -583,7 +577,7 @@ def make_sfts(csv_path, index=4, sft_output_dir=None,
                 dur = int(parts[3])
                 patches.append((t0, t0 + dur))
         return patches
-
+    # comanda 
     def _genera_patch(lcf_path, canal, t0, t1, patch_id):
         comanda = [
             "lalpulsar_MakeSFTs",
@@ -604,11 +598,11 @@ def make_sfts(csv_path, index=4, sft_output_dir=None,
         ]
         try:
             subprocess.run(comanda, check=True, capture_output=True)
-            print(f"  ✓ {canal} patch {patch_id:03d} ({t0}–{t1})")
+            print(f" bé! {canal} patch {patch_id:03d} ({t0}–{t1})")
         except subprocess.CalledProcessError as e:
-            print(f"  ✗ {canal} patch {patch_id:03d}: {e.stderr.decode()}")
+            print(f"  falla {canal} patch {patch_id:03d}: {e.stderr.decode()}")
             raise
-
+    # claude. Per llençar en paral·lel la generacio de sfts. No m'he atrevit amb més de 6 workers, la meva cpu estava al límit
     tasques = []
     for lcf_path, canal in [(lcf_H1, "H1:STRAIN"), (lcf_L1, "L1:STRAIN")]:
         patches = _llegeix_lcf(lcf_path)
@@ -622,12 +616,11 @@ def make_sfts(csv_path, index=4, sft_output_dir=None,
         for fut in concurrent.futures.as_completed(futures):
             fut.result()
 
-    print("✓ Tots els SFTs generats")
+    print("Tots els SFTs generats")
 
 
-# =============================================================================
+#################################################################################################################################################
 # 8. VISUALITZACIÓ
-# =============================================================================
 
 def visualize_B(B_matrix, F0, F1, tau_gw, titol="Matriu B"):
     """Heatmap de la matriu B (estadística 2F)."""
@@ -692,9 +685,8 @@ def compute_n_plot_viterbi(B_matrix, F0, F1, tau_gw):
     return freqs_v
 
 
-# =============================================================================
+#################################################################################################################################################
 # 9. BUCLE DE LÍMITS SUPERIORS
-# =============================================================================
 
 @cronometra
 def upper_limit_loop(
