@@ -6,7 +6,7 @@ amb dades reals de GW231123 (O4a LIGO).
 
 Estructura
 ----------
-1. Configuració global
+1. Configuració global        — asseguro q existeixin directoris i la simulacio superrad. Poso paràmetres de gw231123
 2. calcula_parametres_hmm()   — paràmetres T_sft / T_coh per garantir viterbi
 3. algoritme_viterbi()        — Viterbi amb spin-up
 4. build_B()                  — matriu B amb dades reals
@@ -80,9 +80,17 @@ if actual_dir == "src":
 needed_dirs = [
     "data/raw",
     "data/processed/fake_data",
+    "results/real_data/B_matrix",
+    "results/real_data/V_matrix",
+    "results/real_data/V_n_B_matrices",
     "results/simulations/B_matrix",
     "results/simulations/V_matrix",
-    "results/injections"
+    "results/simulations/V_n_B_matrices",
+    "results/injections/B_matrix",
+    "results/injections/V_matrix",
+    "results/injections/V_n_B_matrices",
+    
+
 ]
 
 for dir in needed_dirs:
@@ -298,7 +306,7 @@ def build_B(sft_path, F0, F1, tau_gw, massa=None):
             print(f"  Avís: no s'ha pogut llegir el rang dels SFTs ({e}).")
 
     f_cerca_min   = F0 - 0.1
-    f_cerca_max   = F0 + 1.7 + abs(F1) * T_obs # dono marge suficient. He trobat problemes aquí a vegades. Aquest 1.7 fa que haguem de buscar molt mes bins!! anar en compte
+    f_cerca_max   = F0 + 1.7 + abs(F1) * T_obs # dono marge suficient. He trobat problemes aquí a vegades. Aquest 1.7 fa que haguem de buscar molt mes bins!! anar amb compte
     num_freq_bins = int(np.round((f_cerca_max - f_cerca_min) / deltaf)) + 1
 
     B_matrix = np.zeros((num_freq_bins, num_segments)) #ini
@@ -308,7 +316,7 @@ def build_B(sft_path, F0, F1, tau_gw, massa=None):
         t_max = t_min + T_coh # temps final
 
         # fem una cerca coherent amb freqs entre freq_cerca_min i freq_cerca_max, amb deltaf entre bins. F1 i f2 indiquen derivades de la freq. les poso a 0 perque 
-        # per cada segment tcoh considero una cw COHERENT
+        # per cada segment tcoh considero una cw COHERENT, la freq no evoluciona
         search = pyfstat.GridSearch(
             label=f"segment_{t}",
             outdir="real_data/output_B_matrix",
@@ -622,7 +630,7 @@ def make_sfts(csv_path, index=4, sft_output_dir=None,
 #################################################################################################################################################
 # 8. VISUALITZACIÓ
 
-def visualize_B(B_matrix, F0, F1, tau_gw, titol="Matriu B"):
+def visualize_B(B_matrix, F0, F1, tau_gw, titol="B_matrix",outdir=f"results/simulations/B_matrix/matriu_B_heatmap_{F0:.2f}Hz.png"):
     """Heatmap de la matriu B (estadística 2F)."""
     T_obs       = tau_gw + 1800
     f_cerca_min = F0 - 0.1
@@ -634,18 +642,18 @@ def visualize_B(B_matrix, F0, F1, tau_gw, titol="Matriu B"):
         extent=[0, T_obs / 3600, f_cerca_min, f_cerca_max],
         cmap='viridis',
     )
-    plt.colorbar(im).set_label(r'Estadística $2\mathcal{F}$', fontsize=12)
-    plt.xlabel('Temps d\'observació (h)', fontsize=12)
-    plt.ylabel('Freqüència $f$ (Hz)', fontsize=12)
+    plt.colorbar(im).set_label(r'$2\mathcal{F}$-statistic', fontsize=12)
+    plt.xlabel('Observation time (h)', fontsize=12)
+    plt.ylabel('Frequency $f$ (Hz)', fontsize=12)
     plt.title(titol, fontsize=14)
     plt.tight_layout()
-    nom = f"results/simulations/B_matrix/matriu_B_heatmap_{F0:.2f}Hz.png"
-    plt.savefig(nom, dpi=300)
+    plt.savefig(outdir, dpi=300)
     print(f"Guardat: {nom}")
     plt.close()
 
 
-def compute_n_plot_viterbi(B_matrix, F0, F1, tau_gw):
+def compute_n_plot_viterbi(B_matrix, F0, F1, tau_gw,outdir1=f"results/simulations/V_n_B_matrices/viterbi_{F0:.2f}Hz.png",
+                           outdir2=f"results/simulations/V_matrix/viterbi_{F0:.2f}Hz.png"):
     """Executa Viterbi i genera la figura comparativa B vs V."""
     params      = calcula_parametres_hmm(F1, n_min=5, drift_bin_max=0.85)
     T_coh       = params["T_coh"]
@@ -663,25 +671,42 @@ def compute_n_plot_viterbi(B_matrix, F0, F1, tau_gw):
 
     im1 = ax1.imshow(B_matrix, aspect='auto', origin='lower',
                      extent=[0, T_obs / 3600, f_cerca_min, f_cerca_max], cmap='viridis')
-    ax1.set_ylabel('Freqüència (Hz)', fontsize=12)
-    ax1.set_title(r'Matriu $\mathcal{B}$ — estadística $2\mathcal{F}$', fontsize=14)
+    ax1.set_ylabel('Frequency (Hz)', fontsize=12)
+    ax1.set_title(r'$\mathcal{B}$ Matrix —  $2\mathcal{F}$-statistic', fontsize=14)
     fig.colorbar(im1, ax=ax1).set_label(r'$2\mathcal{F}$', fontsize=12)
 
     V_norm = V - V.max(axis=0, keepdims=True)
     im2 = ax2.imshow(V_norm, aspect='auto', origin='lower',
                      extent=[0, T_obs / 3600, f_cerca_min, f_cerca_max], cmap='plasma')
-    ax2.plot(temps_h, freqs_v, color='cyan', lw=2, ls='--', label='Camí Viterbi')
-    ax2.set_xlabel('Temps d\'observació (h)', fontsize=12)
-    ax2.set_ylabel('Freqüència (Hz)', fontsize=12)
-    ax2.set_title(r'Matriu $\mathcal{V}$ de Viterbi', fontsize=14)
+    ax2.plot(temps_h, freqs_v, color='cyan', lw=2, ls='--', label='Viterbi Path')
+    ax2.set_xlabel('Observation time (h)', fontsize=12)
+    ax2.set_ylabel('Frequency (Hz)', fontsize=12)
+    ax2.set_title(r'Viterbi $\mathcal{V}$ matrix', fontsize=14)
     ax2.legend(loc='upper right')
-    fig.colorbar(im2, ax=ax2).set_label('Probabilitat relativa', fontsize=12)
+    fig.colorbar(im2, ax=ax2).set_label('Cumulative log-likelihood', fontsize=12)
 
     plt.tight_layout()
-    nom = f"results/simulations/V_matrix/viterbi_{F0:.2f}Hz.png"
-    plt.savefig(nom, dpi=300)
+    plt.savefig(outdir1, dpi=300)
     print(f"Guardat: {nom}  |  Freqüència final: {freqs_v[-1]:.4f} Hz")
     plt.close()
+
+    # ara només la V
+
+    plt.figure(figsize=(12, 6))
+    im = plt.imshow(V_norm, aspect='auto', origin='lower',
+                     extent=[0, T_obs / 3600, f_cerca_min, f_cerca_max], cmap='plasma')
+    plt.plot(temps_h, freqs_v, color='cyan', lw=2, ls='--', label='Viterbi Path')
+    plt.set_xlabel('Observation time (h)', fontsize=12)
+    plt.set_ylabel('Frequency (Hz)', fontsize=12)
+    plt.set_title(r'Viterbi $\mathcal{V}$ matrix', fontsize=14)
+    plt.legend(loc='upper right')
+    plt.colorbar(im2, ax=ax2).set_label('Cumulative log-likelihood', fontsize=12)
+
+    plt.tight_layout()
+    plt.savefig(outdir2, dpi=300)
+    print(f"Guardat: {nom}  |  Freqüència final: {freqs_v[-1]:.4f} Hz")
+    plt.close()
+
     return freqs_v
 
 
@@ -918,8 +943,8 @@ if __name__ == "__main__":
     print(f"\nPAS 4: Càlcul de la matriu B i Viterbi per a la massa principal | massa:  {massa:.2e} eV")
     sft_pattern_principal = f"{SFT_DIR_TEMPLATE.format(massa=massa)}/*.sft"
     B_real = build_B(sft_pattern_principal, F0, F1, tau_gw, massa=massa)
-    visualize_B(B_real, F0, F1, tau_gw, titol="Matriu B — dades reals GW231123")
-    compute_n_plot_viterbi(B_real, F0, F1, tau_gw)
+    visualize_B(B_real, F0, F1, tau_gw, titol="$\mathcal{B}$ Matrix — Real Data GW231123",outdir=f"results/real_data/B_matrix/matriu_B_{F0:.2f}_Hz")
+    compute_n_plot_viterbi(B_real, F0, F1, tau_gw,outdir1=f"results/real_data/V_n_B_matrices/viterbi_{F0:.2f}_Hz",outdir2=f"results/real_data/V_matrix/viterbi_{F0:.2f}_Hz")
 
     # ── Pas 5: Límits superiors sobre totes les masses ────────────────────────
     print("\nPAS 5: Bucle de límits superiors")
@@ -935,4 +960,3 @@ if __name__ == "__main__":
     print(f"\nMasses excloses al {0.80:.0%} de confiança:")
     for r in excloses:
         print(f"  {r['massa']:.2e} eV  (confiança={r['confidence']:.3f})")
-

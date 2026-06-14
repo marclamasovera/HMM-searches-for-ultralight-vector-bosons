@@ -22,14 +22,20 @@ logger.setLevel(logging.WARNING)  # O DEBUG per més detall, o WARNING per menys
 
 if __name__ == "__main__":
 
-    needed_dirs = [
-    "data/raw",
-    "data/processed/fake_data",
-    "results/simulations/B_matrix",
-    "results/simulations/V_matrix",
-    "results/injections"
-]
 
+
+    needed_dirs = [
+        "data/raw",
+        "data/processed/fake_data",
+        "results/simulations/B_matrix",
+        "results/simulations/V_matrix",
+        "results/simulations/V_n_B_matrices",
+        "results/injections/B_matrix",
+        "results/injections/V_matrix",
+        "results/injections/V_n_B_matrices",
+        
+
+    ]
     for dir in needed_dirs:
         os.makedirs(dir, exist_ok=True)
 
@@ -456,12 +462,11 @@ if __name__ == "__main__":
 
         # Afegim la barra de color per saber quanta energia (2F) hi ha
         cbar = plt.colorbar(imatge)
-        cbar.set_label('Estadística $2\mathcal{F}$ (Probabilitat d\'emissió)', fontsize=12)
+        plt.colorbar(im).set_label(r'$2\mathcal{F}$-statistic', fontsize=12)
+        plt.xlabel('Observation time (h)', fontsize=12)
+        plt.ylabel('Frequency $f$ (Hz)', fontsize=12)
 
-        # Etiquetem els eixos
-        plt.xlabel('Temps d\'observació (Hores)', fontsize=12)
-        plt.ylabel('Freqüència $f$ (Hz)', fontsize=12)
-        plt.title('Matriu $\mathcal{B}$ de l\'HMM (Senyal Superradiant Injectat)', fontsize=14)
+        plt.title('$\mathcal{B}$ Matrix', fontsize=14)
 
         plt.tight_layout()
 
@@ -492,8 +497,8 @@ if __name__ == "__main__":
         # Superposem el camí per veure com d'invisible era
         # ax1.plot(temps_hores, freqs_viterbi, color='red', linewidth=2, label="Camí Viterbi")
 
-        ax1.set_ylabel('Freqüència $f$ (Hz)', fontsize=12)
-        ax1.set_title('Matriu $\mathcal{B}$ Original (Estadística $2\mathcal{F}$ neta)', fontsize=14)
+        ax1.set_ylabel('Frequency $f$ (Hz)', fontsize=12)
+        ax1.set_title('$\mathcal{B}$ Matrix)', fontsize=14)
         # ax1.legend(loc="upper right")
         cbar1 = fig.colorbar(imatge_B, ax=ax1)
         cbar1.set_label('$2\mathcal{F}$', fontsize=12)
@@ -513,14 +518,28 @@ if __name__ == "__main__":
         # Superposem el camí per comprovar que segueix la cresta
         # ax2.plot(temps_hores, freqs_viterbi, color='cyan', linewidth=2, linestyle='--', label="Camí Viterbi (Cresta)")
 
-        ax2.set_xlabel('Temps d\'observació (Hores)', fontsize=12)
-        ax2.set_ylabel('Freqüència $f$ (Hz)', fontsize=12)
-        ax2.set_title('Matriu $\mathcal{V}$ de Viterbi (Log-Likelihood Acumulada)', fontsize=14)
-        # ax2.legend(loc="upper right")
-        cbar2 = fig.colorbar(imatge_V, ax=ax2)
-        cbar2.set_label('Probabilitat Relativa', fontsize=12)
+        ax2.set_xlabel('Observation time (h)', fontsize=12)
+        ax2.set_ylabel('Frequency (Hz)', fontsize=12)
+        ax2.set_title(r'Viterbi $\mathcal{V}$ matrix', fontsize=14)
+        ax2.legend(loc='upper right')
+        fig.colorbar(imatge_V, ax=ax2).set_label('Cumulative log-likelihood', fontsize=12)
 
         plt.tight_layout()
-        plt.savefig(f'results/simulations/V_matrix/comprensio_viterbi_{df["Massa"].iloc[index]:.2e}eV.png', dpi=300)
+        plt.savefig(f'results/simulations/V_n_B_matrices/comprensio_viterbi_{df["Massa"].iloc[index]:.2e}eV.png', dpi=300)
         print(f"Visualització analítica guardada a 'comprensio_viterbi_{df['Massa'].iloc[index]:.2e}eV.png'")
 
+        plt.figure(figsize=(12, 6))
+        im = plt.imshow(V_normalitzada, aspect='auto', origin='lower',
+                        extent=[0, T_obs / 3600, f_cerca_min, f_cerca_max], cmap='plasma')
+        plt.plot(temps_hores, freqs_viterbi, color='cyan', lw=2, ls='--', label='Viterbi Path')
+        plt.set_xlabel('Observation time (h)', fontsize=12)
+        plt.set_ylabel('Frequency (Hz)', fontsize=12)
+        plt.set_title(r'Viterbi $\mathcal{V}$ matrix', fontsize=14)
+        plt.legend(loc='upper right')
+        plt.colorbar(im, ax=ax2).set_label('Cumulative log-likelihood', fontsize=12)
+
+        plt.tight_layout()
+        nom = f"results/simulations/V_matrix/viterbi_{F0:.2f}Hz.png"
+        plt.savefig(nom, dpi=300)
+        print(f"Guardat: {nom}  |  Freqüència final: {freqs_viterbi[-1]:.4f} Hz")
+        plt.close()
